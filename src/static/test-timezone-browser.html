@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار التوقيت السعودي</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .error { background-color: #ffe6e6; }
+        .success { background-color: #e6ffe6; }
+    </style>
+</head>
+<body>
+    <h1>اختبار التوقيت السعودي</h1>
+    <div id="results"></div>
+
+    <script src="timezone-utils.js"></script>
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(title, content, isError = false) {
+            const div = document.createElement('div');
+            div.className = `test-result ${isError ? 'error' : 'success'}`;
+            div.innerHTML = `<strong>${title}:</strong> ${content}`;
+            results.appendChild(div);
+        }
+
+        // اختبار التاريخ الحالي
+        const now = new Date();
+        addResult('التاريخ الحالي (UTC)', now.toISOString());
+        
+        // اختبار التحويل إلى التوقيت السعودي
+        try {
+            const saudiTime = formatDateForDisplay(now);
+            addResult('التوقيت السعودي (formatDateForDisplay)', saudiTime);
+        } catch (e) {
+            addResult('خطأ في formatDateForDisplay', e.message, true);
+        }
+
+        // اختبار تاريخ من الخادم (محاكاة)
+        const serverDate = "2025-08-01T06:58:00.000Z"; // يجب أن يظهر 09:58 بتوقيت السعودية
+        try {
+            const convertedDate = formatDateForDisplay(serverDate);
+            addResult('تاريخ من الخادم (06:58 UTC)', convertedDate);
+            
+            if (convertedDate.includes('٠٩:٥٨') || convertedDate.includes('09:58')) {
+                addResult('✅ التحويل صحيح', 'التوقيت يظهر 09:58 كما هو مطلوب');
+            } else {
+                addResult('❌ التحويل خاطئ', 'التوقيت لا يظهر 09:58', true);
+            }
+        } catch (e) {
+            addResult('خطأ في تحويل تاريخ الخادم', e.message, true);
+        }
+
+        // اختبار مباشر للتوقيت السعودي
+        try {
+            const directTest = new Date().toLocaleDateString('ar-EG', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Riyadh'
+            });
+            addResult('اختبار مباشر للتوقيت السعودي', directTest);
+        } catch (e) {
+            addResult('خطأ في الاختبار المباشر', e.message, true);
+        }
+
+        // اختبار دعم المتصفح للمنطقة الزمنية
+        try {
+            const testSupport = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            addResult('المنطقة الزمنية للمتصفح', testSupport);
+        } catch (e) {
+            addResult('خطأ في فحص دعم المتصفح', e.message, true);
+        }
+    </script>
+</body>
+</html>
+
