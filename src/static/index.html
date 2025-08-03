@@ -112,6 +112,13 @@
                             <option value="custom">فترة مخصصة</option>
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label>نوع الملاحظات:</label>
+                        <select id="note-type-filter">
+                            <option value="negative">ملاحظات سلبية</option>
+                            <option value="positive">ملاحظات إيجابية</option>
+                        </select>
+                    </div>
                     <div id="custom-dates" class="filter-group" style="display: none;">
                         <input type="date" id="start-date">
                         <span>إلى</span>
@@ -272,9 +279,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="negative-notes">
-                    <h4>الملاحظات السلبية (آخر أسبوع)</h4>
-                    <div id="negative-notes-list" class="notes-list"></div>
+                <div class="notes-section">
+                    <h4 id="notes-title">الملاحظات السلبية</h4>
+                    <div id="notes-list" class="notes-list"></div>
                 </div>
             </div>
             <div class="modal-footer">

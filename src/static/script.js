@@ -431,20 +431,30 @@ async function showMemberDetails(memberId) {
         const periodFilter = document.getElementById('period-filter').value;
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
+        const noteType = document.getElementById('note-type-filter')?.value || 'negative';
 
         let url = `/api/members/${memberId}`;
+        const params = new URLSearchParams();
+        
         if (periodFilter) {
-            url += `?period=${periodFilter}`;
+            params.append('period', periodFilter);
             if (periodFilter === 'custom' && startDate && endDate) {
-                url += `&start_date=${startDate}&end_date=${endDate}`;
+                params.append('start_date', startDate);
+                params.append('end_date', endDate);
             }
+        }
+        
+        params.append('note_type', noteType);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
         }
 
         const response = await fetch(url, fetchOptions());
         if (response.ok) {
             const data = await response.json();
             const modal = document.getElementById('member-details-modal');
-            const { member, statistics, negative_notes } = data;
+            const { member, statistics, notes, note_type } = data;
             modal.dataset.memberId = member.id;
             document.getElementById('member-details-name').textContent = member.name;
             document.getElementById('total-positive').textContent = statistics.total_positive;
@@ -457,14 +467,23 @@ async function showMemberDetails(memberId) {
             const perfStatus = document.getElementById('performance-status');
             perfStatus.textContent = statistics.performance;
             perfStatus.className = `performance-badge ${getPerformanceClass(statistics.performance)}`;
-            const notesList = document.getElementById('negative-notes-list');
-            notesList.innerHTML = negative_notes.length === 0 ? '<p class="no-data">لا توجد ملاحظات سلبية</p>' :
-                negative_notes.map(note => `
-                <div class="note-item">
+            
+            const notesList = document.getElementById('notes-list');
+            const notesTitle = document.getElementById('notes-title');
+            
+            // تحديث عنوان الملاحظات
+            notesTitle.textContent = note_type === 'positive' ? 'الملاحظات الإيجابية' : 'الملاحظات السلبية';
+            
+            // تحديث قائمة الملاحظات
+            notesList.innerHTML = notes.length === 0 ? 
+                `<p class="no-data">لا توجد ${note_type === 'positive' ? 'ملاحظات إيجابية' : 'ملاحظات سلبية'}</p>` :
+                notes.map(note => `
+                <div class="note-item ${note.point_type === 'positive' ? 'positive-note' : 'negative-note'}">
                     <div class="note-category">${note.category}</div>
                     ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
                     <div class="note-date">${formatDate(note.created_at)}</div>
                 </div>`).join('');
+            
             const canEdit = currentUser.role === 'leader' || currentUser.role === 'co_leader';
             const canDelete = currentUser.role === 'leader';
             document.getElementById('edit-member-btn').style.display = canEdit ? 'inline-flex' : 'none';

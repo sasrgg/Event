@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from src.models.user import db, User, Member, Point, Log
 from src.models.constants import LOG_ACTIONS, LOG_TARGETS, USER_ROLES
 from src.routes.auth import login_required, role_required
+from src.utils.timezone import get_saudi_now
 from datetime import datetime
 from sqlalchemy import and_, or_
 
@@ -57,7 +58,7 @@ def create_user():
                         role=role,
                         first_login=True,
                         created_by=session['user_id'],
-                        created_at=datetime.utcnow(),
+                        created_at=get_saudi_now(),
                         is_active=True)
         new_user.set_password('123')
 

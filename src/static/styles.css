@@ -957,10 +957,26 @@ body {
     border-left: 4px solid var(--danger);
 }
 
+.note-item.positive-note {
+    border-left-color: var(--success);
+}
+
+.note-item.negative-note {
+    border-left-color: var(--danger);
+}
+
 .note-category {
     color: var(--danger);
     margin-bottom: 0.5rem;
     font-size: 1.1rem;
+}
+
+.positive-note .note-category {
+    color: var(--success);
+}
+
+.negative-note .note-category {
+    color: var(--danger);
 }
 
 .note-description {

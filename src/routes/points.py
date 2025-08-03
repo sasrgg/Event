@@ -4,6 +4,7 @@ from src.models.constants import LOG_ACTIONS, LOG_TARGETS, POSITIVE_CATEGORIES, 
 from src.routes.auth import login_required, role_required
 from datetime import datetime
 from sqlalchemy import and_, or_
+from src.utils.timezone import get_saudi_now
 
 points_bp = Blueprint('points', __name__)
 
@@ -38,7 +39,7 @@ def add_point():
             category=category,
             description=description,
             created_by=session['user_id'],
-            created_at=datetime.utcnow()
+            created_at=get_saudi_now()
         )
         
         db.session.add(new_point)
