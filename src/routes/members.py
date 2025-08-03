@@ -122,6 +122,52 @@ def get_member_details(member_id):
         member = Member.query.filter_by(id=member_id, is_active=True).first()
         if not member:
             return jsonify({'error': 'العضو غير موجود'}), 404
+
+
+                period = request.args.get('period', 'week')  # الافتراضي هو 'week'
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        note_type = request.args.get('note_type', 'negative')  # الافتراضي هو 'negative'
+
+        # تحديد نطاق التاريخ بناءً على 'period'
+        if period == 'today':
+            start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            end_date = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+        elif period == 'week':
+            start_date = datetime.utcnow() - timedelta(days=7)
+            end_date = datetime.utcnow()
+        elif period == 'month':
+            start_date = datetime.utcnow() - timedelta(days=30)
+            end_date = datetime.utcnow()
+        elif period == 'custom' and start_date_str and end_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        else:
+            # الافتراضي إذا لم يتم تحديد فترة صالحة
+            start_date = datetime.utcnow() - timedelta(days=7)
+            end_date = datetime.utcnow()
+
+        # جلب الملاحظات بناءً على نوع الملاحظة والفترة الزمنية
+        filtered_points_query = Point.query.filter(
+            and_(
+                Point.member_id == member.id,
+                Point.point_type == note_type,
+                Point.created_at >= start_date,
+                Point.created_at <= end_date,
+                Point.is_active == True
+            )
+        ).order_by(Point.created_at.desc())
+
+        filtered_notes = []
+        for point in filtered_points_query.all():
+            filtered_notes.append({
+                'id': point.id,
+                'category': point.category,
+                'description': point.description,
+                'created_at': point.created_at.isoformat(),
+                'created_by': point.creator.username if point.creator else None
+            })
+
         
         all_points = Point.query.filter_by(member_id=member.id, is_active=True).all()
         total_positive = len([p for p in all_points if p.point_type == 'positive'])
@@ -161,65 +207,37 @@ def get_member_details(member_id):
         else:
             performance = 'ثابت'
         
-        recent_negative_points = Point.query.filter(
-            and_(
-                Point.member_id == member.id,
-                Point.point_type == 'negative',
-                Point.created_at >= current_week_start,
-                Point.is_active == True
-            )
-        ).order_by(Point.created_at.desc()).all()
+       # recent_negative_points = Point.query.filter(
+        #     and_(
+        #         Point.member_id == member.id,
+        #         Point.point_type == 'negative',
+        #         Point.created_at >= current_week_start,
+        #         Point.is_active == True
+        #     )
+        # ).order_by(Point.created_at.desc()).all()
+
+        # negative_notes = []
+        # for point in recent_negative_points:
+        #     negative_notes.append({
+        #         'id': point.id,
+        #         'category': point.category,
+        #         'description': point.description,
+        #         'created_at': point.created_at.isoformat(),
+        #         'created_by': point.creator.username if point.creator else None
+        #     })
+
+
         
-        negative_notes = []
-        for point in recent_negative_points:
-            negative_notes.append({
-                'id': point.id,
-                'category': point.category,
-                'description': point.description,
-                'created_at': point.created_at.isoformat(),
-                'created_by': point.creator.username if point.creator else None
-            })
-
-        period = request.args.get('period', 'all')
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-
-        date_filter = None
-        if period == 'today':
-            date_filter = datetime.now().date()
-        elif period == 'week':
-            date_filter = datetime.utcnow() - timedelta(days=7)
-        elif period == 'month':
-            date_filter = datetime.utcnow() - timedelta(days=30)
-        elif period == 'custom' and start_date and end_date:
-            date_filter = {
-                'start': datetime.strptime(start_date, '%Y-%m-%d'),
-                'end': datetime.strptime(end_date, '%Y-%m-%d')
-            }
-
-
-        filtered_query = Point.query.filter(
+        filtered_chat_activities = Point.query.filter(
             and_(
                 Point.member_id == member.id,
                 Point.point_type == 'positive',
                 Point.category == 'فعالية في الشات العام',
+                Point.created_at >= start_date,
+                Point.created_at <= end_date,
                 Point.is_active == True
             )
-        )
-
-        if period == 'today' and date_filter:
-            filtered_query = filtered_query.filter(db.func.date(Point.created_at) == date_filter)
-        elif period in ['week', 'month'] and date_filter:
-            filtered_query = filtered_query.filter(Point.created_at >= date_filter)
-        elif period == 'custom' and isinstance(date_filter, dict):
-            filtered_query = filtered_query.filter(
-                and_(
-                    Point.created_at >= date_filter['start'],
-                    Point.created_at <= date_filter['end']
-                )
-            )
-
-        filtered_chat_activities = filtered_query.count()
+        ).count()
         
         return jsonify({
             'member': member.to_dict(),
@@ -233,7 +251,9 @@ def get_member_details(member_id):
                 'previous_week_negative': previous_week_negative,
                 'performance': performance
             },
-            'negative_notes': negative_notes
+            'filtered_notes': filtered_notes,  # تم تغيير الاسم إلى filtered_notes
+            'note_type': note_type,
+            'period': period 
         }), 200
         
     except Exception as e:
