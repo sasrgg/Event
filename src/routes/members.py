@@ -145,7 +145,7 @@ def get_member_details(member_id):
             end_date = None
         else:
             # الافتراضي إذا لم يتم تحديد فترة صالحة
-            start_date, end_date = get_saudi_date_range('week')
+            start_date, end_date = get_saudi_date_range('all')
 
         # جلب الملاحظات بناءً على نوع الملاحظة والفترة الزمنية
         filtered_points_query = Point.query.filter(
