@@ -318,7 +318,7 @@ function handleNoteTypeChange() {
 }
 
 // دالة محدثة لعرض تفاصيل العضو
-async function showMemberDetails(memberId, period = 'week', noteType = 'negative') {
+async function showMemberDetails(memberId, period, noteType = 'negative') {
     currentMemberId = memberId; // حفظ معرف العضو الحالي
     showLoading();
     try {
