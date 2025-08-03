@@ -124,7 +124,7 @@ def get_member_details(member_id):
         if not member:
             return jsonify({'error': 'العضو غير موجود'}), 404
 
-        period = request.args.get('period', 'week')  # الافتراضي هو 'week'
+        period = request.args.get('period', 'all')
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
         note_type = request.args.get('note_type', 'negative')  # الافتراضي هو 'negative'
