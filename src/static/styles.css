@@ -1312,3 +1312,78 @@ body {
 
  
 }
+
+/* تنسيق قسم الملاحظات الجديد */
+.notes-section {
+    margin-top: 2rem;
+}
+
+.notes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.notes-period-info {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+}
+
+.notes-filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+}
+
+.notes-filters .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.notes-filters label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.notes-filters select {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* تحسين تنسيق modal للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .notes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .notes-filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .notes-filters .filter-group {
+        justify-content: space-between;
+    }
+}
