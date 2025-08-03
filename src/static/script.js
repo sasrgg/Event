@@ -49,9 +49,7 @@ function setupEventListeners() {
     document.getElementById('edit-user-form').addEventListener('submit', handleEditUserSubmit);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     
-    // إضافة event listener لزر تحديث الملاحظات
-    document.getElementById('refresh-notes').addEventListener('click', refreshMemberNotes);
-    
+
     // إضافة event listener لتغيير نوع الملاحظات
     document.getElementById('modal-note-type-filter').addEventListener('change', refreshMemberNotes);
     document.querySelectorAll('.tab-btn').forEach(btn => {
