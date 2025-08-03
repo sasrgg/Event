@@ -105,7 +105,7 @@ def get_member_details(member_id):
     try:
         member = Member.query.filter_by(id=member_id, is_active=True).first()
         if not member:
-            return jsonify({'error': 'العضو غير موجود'}), 404
+            return jsonify({\'error\': \'العضو غير موجود\'}), 404
         
         period = request.args.get(\'period\', \'all\')
         start_date_str = request.args.get(\'start_date\')
@@ -308,3 +308,4 @@ def get_categories():
         'positive_categories': POSITIVE_CATEGORIES,
         'negative_categories': NEGATIVE_CATEGORIES
     }), 200
+

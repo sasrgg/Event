@@ -44,3 +44,14 @@
 - جميع الأوقات الآن تُحفظ وتُعرض بتوقيت السعودية (UTC+3)
 - التصفية تعمل على جميع أنواع الفترات الزمنية (اليوم، الأسبوع، الشهر، فترة مخصصة)
 
+
+
+## تحديث عاجل - إصلاح خطأ SyntaxError
+
+### الإصلاحات:
+- تم إصلاح خطأ `SyntaxError: unexpected character after line continuation character` في `src/routes/members.py`.
+
+### الملفات المعدلة:
+- `src/routes/members.py`
+
+
