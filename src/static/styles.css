@@ -560,30 +560,26 @@ body {
     gap: 1rem;
 }
 
-.note-item {
+.point-item {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
     display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    box-shadow: 0 2px 10px var(--shadow-light);
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 10px var(--shadow-light);
 }
 
-    .note-item:hover {
+    .point-item:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px var(--shadow);
     }
 
-.note-item.positive {
-    border-right: 3px solid var(--success);
-}
-
-.note-item.negative {
-    border-right: 3px solid var(--danger);
-}
+.point-info {
     flex: 1;
     min-width: 200px;
 }
@@ -959,14 +955,6 @@ body {
     padding: 1.5rem;
     margin-bottom: 1rem;
     border-left: 4px solid var(--danger);
-}
-
-.note-item.positive {
-    border-left: 4px solid var(--success);
-}
-
-.note-item.positive .note-category {
-    color: var(--success);
 }
 
 .note-category {
