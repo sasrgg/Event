@@ -48,6 +48,12 @@ function setupEventListeners() {
     document.getElementById('edit-member-form').addEventListener('submit', handleEditMemberSubmit);
     document.getElementById('edit-user-form').addEventListener('submit', handleEditUserSubmit);
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    
+    // إضافة event listener لزر تحديث الملاحظات
+    document.getElementById('refresh-notes').addEventListener('click', refreshMemberNotes);
+    
+    // إضافة event listener لتغيير نوع الملاحظات
+    document.getElementById('modal-note-type-filter').addEventListener('change', refreshMemberNotes);
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() { switchTab(this.dataset.tab); });
     });
@@ -431,7 +437,7 @@ async function showMemberDetails(memberId) {
         const periodFilter = document.getElementById('period-filter').value;
         const startDate = document.getElementById('start-date').value;
         const endDate = document.getElementById('end-date').value;
-        const noteType = document.getElementById('note-type-filter')?.value || 'negative';
+        const noteType = 'negative'; // الافتراضي عند فتح modal
 
         let url = `/api/members/${memberId}`;
         const params = new URLSearchParams();
@@ -467,6 +473,12 @@ async function showMemberDetails(memberId) {
             const perfStatus = document.getElementById('performance-status');
             perfStatus.textContent = statistics.performance;
             perfStatus.className = `performance-badge ${getPerformanceClass(statistics.performance)}`;
+            
+            // تحديث عرض الفترة المختارة
+            updateSelectedPeriodDisplay();
+            
+            // تعيين قيمة فلتر نوع الملاحظات في modal
+            document.getElementById('modal-note-type-filter').value = note_type;
             
             const notesList = document.getElementById('notes-list');
             const notesTitle = document.getElementById('notes-title');
@@ -872,3 +884,102 @@ async function handleDeleteUser(userId) {
         hideLoading();
     }
 }
+
+
+// دالة لتحديث عرض الفترة المختارة
+function updateSelectedPeriodDisplay() {
+    const periodFilter = document.getElementById('period-filter').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const periodDisplay = document.getElementById('selected-period-display');
+    
+    let periodText = '';
+    switch(periodFilter) {
+        case 'all':
+            periodText = 'جميع الأوقات';
+            break;
+        case 'today':
+            periodText = 'اليوم';
+            break;
+        case 'week':
+            periodText = 'هذا الأسبوع';
+            break;
+        case 'month':
+            periodText = 'هذا الشهر';
+            break;
+        case 'custom':
+            if (startDate && endDate) {
+                periodText = `من ${startDate} إلى ${endDate}`;
+            } else {
+                periodText = 'فترة مخصصة';
+            }
+            break;
+        default:
+            periodText = 'جميع الأوقات';
+    }
+    
+    periodDisplay.textContent = `الفترة المختارة: ${periodText}`;
+}
+
+// دالة لتحديث الملاحظات عند تغيير نوع الملاحظات
+async function refreshMemberNotes() {
+    const modal = document.getElementById('member-details-modal');
+    const memberId = modal.dataset.memberId;
+    
+    if (!memberId) return;
+    
+    showLoading();
+    try {
+        const periodFilter = document.getElementById('period-filter').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        const noteType = document.getElementById('modal-note-type-filter').value;
+
+        let url = `/api/members/${memberId}`;
+        const params = new URLSearchParams();
+        
+        if (periodFilter) {
+            params.append('period', periodFilter);
+            if (periodFilter === 'custom' && startDate && endDate) {
+                params.append('start_date', startDate);
+                params.append('end_date', endDate);
+            }
+        }
+        
+        params.append('note_type', noteType);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
+
+        const response = await fetch(url, fetchOptions());
+        if (response.ok) {
+            const data = await response.json();
+            const { notes, note_type } = data;
+            
+            const notesList = document.getElementById('notes-list');
+            const notesTitle = document.getElementById('notes-title');
+            
+            // تحديث عنوان الملاحظات
+            notesTitle.textContent = note_type === 'positive' ? 'الملاحظات الإيجابية' : 'الملاحظات السلبية';
+            
+            // تحديث قائمة الملاحظات
+            notesList.innerHTML = notes.length === 0 ? 
+                `<p class="no-data">لا توجد ${note_type === 'positive' ? 'ملاحظات إيجابية' : 'ملاحظات سلبية'}</p>` :
+                notes.map(note => `
+                <div class="note-item ${note.point_type === 'positive' ? 'positive-note' : 'negative-note'}">
+                    <div class="note-category">${note.category}</div>
+                    ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
+                    <div class="note-date">${formatDate(note.created_at)}</div>
+                </div>`).join('');
+        } else {
+            const data = await response.json();
+            showNotification(data.error, 'error');
+        }
+    } catch(e) {
+        showNotification('فشل في تحديث الملاحظات', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
