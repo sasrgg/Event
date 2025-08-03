@@ -300,9 +300,11 @@ const applyCustomFilter = () => loadMembers();
 
 function handleMemberCardClick(e) {
     if (window.innerWidth > 768) return;
-    const card = e.target.closest('.member-card');
+    const card = e.target.closest(".member-card");
     if (card && card.dataset.id) {
-        showMemberDetails(card.dataset.id);
+        const period = document.getElementById("period-filter").value;
+        const noteType = document.getElementById("note-type-filter") ? document.getElementById("note-type-filter").value : "negative"; // الافتراضي سلبي
+        showMemberDetails(card.dataset.id, period, noteType);
     }
 }
 
@@ -372,11 +374,11 @@ function getPeriodDisplayName(period) {
 function displayNotes(notes, containerId) {
     const container = document.getElementById(containerId);
     if (!notes || notes.length === 0) {
-        container.innerHTML = '<p class="no-data">لا توجد ملاحظات</p>';
+        container.innerHTML = 	erase<p class="no-data">لا توجد ملاحظات</p>
         return;
     }
     container.innerHTML = notes.map(note => `
-        <div class="note-item">
+        <div class="note-item ${note.point_type}">
             <div class="note-category">${note.category}</div>
             ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
             <div class="note-date">${formatDate(note.created_at)}</div>
@@ -838,4 +840,3 @@ function requestDeletePoint(pointId, memberName, category) {
         }
     );
 }
-
