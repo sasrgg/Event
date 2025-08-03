@@ -153,14 +153,31 @@ async function handleLogin(e) {
                 showChangePasswordScreen();
             } else {
                 showMainScreen();
+                // إزالة بيانات الاعتماد من URL بعد تسجيل الدخول الناجح
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has("username") || urlParams.has("password")) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
             }
-        } else {
-            showError('login-error', data.error);
+            } else {
+                showError("login-error", data.error);
+            }
+        } catch (err) {
+            showError("login-error", "حدث خطأ في الاتصال بالخادم");
+        } finally {
+            hideLoading();
         }
-    } catch (err) {
-        showError('login-error', 'حدث خطأ في الاتصال بالخادم');
-    } finally {
-        hideLoading();
+
+
+    // عند تحميل الصفحة، تحقق مما إذا كانت هناك بيانات اعتماد في URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("username") || urlParams.has("password")) {
+        const username = urlParams.get("username");
+        const password = urlParams.get("password");
+        document.getElementById("username").value = username;
+        document.getElementById("password").value = password;
+        // إزالة بيانات الاعتماد من URL بعد ملء الحقول
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 }
 
