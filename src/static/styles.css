@@ -560,26 +560,30 @@ body {
     gap: 1rem;
 }
 
-.point-item {
+.note-item {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    transition: all 0.3s ease;
+    flex-direction: column;
+    gap: 0.75rem;
     box-shadow: 0 2px 10px var(--shadow-light);
+    transition: all 0.3s ease;
 }
 
-    .point-item:hover {
+    .note-item:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px var(--shadow);
     }
 
-.point-info {
+.note-item.positive {
+    border-right: 3px solid var(--success);
+}
+
+.note-item.negative {
+    border-right: 3px solid var(--danger);
+}
     flex: 1;
     min-width: 200px;
 }
