@@ -346,4 +346,3 @@ def get_categories():
         'positive_categories': POSITIVE_CATEGORIES,
         'negative_categories': NEGATIVE_CATEGORIES
     }), 200
-
