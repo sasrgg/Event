@@ -961,6 +961,14 @@ body {
     border-left: 4px solid var(--danger);
 }
 
+.note-item.positive {
+    border-left: 4px solid var(--success);
+}
+
+.note-item.positive .note-category {
+    color: var(--success);
+}
+
 .note-category {
     color: var(--danger);
     margin-bottom: 0.5rem;

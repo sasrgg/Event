@@ -322,7 +322,18 @@ async function showMemberDetails(memberId, period = 'week', noteType = 'negative
     currentMemberId = memberId; // حفظ معرف العضو الحالي
     showLoading();
     try {
-        const response = await fetch(`/api/members/${memberId}?period=${period}&note_type=${noteType}`, fetchOptions());
+        let url = `/api/members/${memberId}?period=${period}&note_type=${noteType}`;
+        
+        // إضافة معاملات الفترة المخصصة إذا كانت محددة
+        if (period === 'custom') {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+            }
+        }
+        
+        const response = await fetch(url, fetchOptions());
         const data = await response.json();
         if (response.ok) {
             const member = data.member;

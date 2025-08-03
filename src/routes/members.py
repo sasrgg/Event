@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from src.models.user import db, User, Member, Point, Log
 from src.models.constants import LOG_ACTIONS, LOG_TARGETS, POSITIVE_CATEGORIES, NEGATIVE_CATEGORIES
 from src.routes.auth import login_required, role_required
+from src.utils.timezone import get_saudi_now, get_saudi_date_range
 from datetime import datetime, timedelta
 from sqlalchemy import and_, or_
 
@@ -16,18 +17,23 @@ def get_members():
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
+        # تحديد نطاق التاريخ بناءً على الفترة
         date_filter = None
         if period == 'today':
-            date_filter = datetime.now().date()
+            start_date_filter, end_date_filter = get_saudi_date_range('today')
+            date_filter = {'start': start_date_filter, 'end': end_date_filter}
         elif period == 'week':
-            date_filter = datetime.now() - timedelta(days=7)
+            start_date_filter, end_date_filter = get_saudi_date_range('week')
+            date_filter = {'start': start_date_filter, 'end': end_date_filter}
         elif period == 'month':
-            date_filter = datetime.now() - timedelta(days=30)
+            start_date_filter, end_date_filter = get_saudi_date_range('month')
+            date_filter = {'start': start_date_filter, 'end': end_date_filter}
         elif period == 'custom' and start_date and end_date:
             date_filter = {
                 'start': datetime.strptime(start_date, '%Y-%m-%d'),
                 'end': datetime.strptime(end_date, '%Y-%m-%d')
             }
+        # إذا كان period == 'all' أو أي قيمة أخرى، لا نطبق فلتر تاريخ
         
         members = Member.query.filter_by(is_active=True).all()
         
@@ -35,13 +41,8 @@ def get_members():
         for member in members:
             points_query = Point.query.filter_by(member_id=member.id, is_active=True)
             
-            if period == 'today' and date_filter:
-                points_query = points_query.filter(
-                    db.func.date(Point.created_at) == date_filter
-                )
-            elif period in ['week', 'month'] and date_filter:
-                points_query = points_query.filter(Point.created_at >= date_filter)
-            elif period == 'custom' and isinstance(date_filter, dict):
+            # تطبيق فلتر التاريخ إذا كان محدد
+            if date_filter:
                 points_query = points_query.filter(
                     and_(
                         Point.created_at >= date_filter['start'],
@@ -90,7 +91,7 @@ def add_member():
         new_member = Member(
             name=name,
             created_by=session['user_id'],
-            created_at=datetime.utcnow()
+            created_at=get_saudi_now()
         )
         
         db.session.add(new_member)
@@ -130,32 +131,41 @@ def get_member_details(member_id):
 
         # تحديد نطاق التاريخ بناءً على 'period'
         if period == 'today':
-            start_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-            end_date = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999)
+            start_date, end_date = get_saudi_date_range('today')
         elif period == 'week':
-            start_date = datetime.utcnow() - timedelta(days=7)
-            end_date = datetime.utcnow()
+            start_date, end_date = get_saudi_date_range('week')
         elif period == 'month':
-            start_date = datetime.utcnow() - timedelta(days=30)
-            end_date = datetime.utcnow()
+            start_date, end_date = get_saudi_date_range('month')
         elif period == 'custom' and start_date_str and end_date_str:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        elif period == 'all':
+            # لجميع الأوقات، لا نطبق فلتر تاريخ
+            start_date = None
+            end_date = None
         else:
             # الافتراضي إذا لم يتم تحديد فترة صالحة
-            start_date = datetime.utcnow() - timedelta(days=7)
-            end_date = datetime.utcnow()
+            start_date, end_date = get_saudi_date_range('week')
 
         # جلب الملاحظات بناءً على نوع الملاحظة والفترة الزمنية
         filtered_points_query = Point.query.filter(
             and_(
                 Point.member_id == member.id,
                 Point.point_type == note_type,
-                Point.created_at >= start_date,
-                Point.created_at <= end_date,
                 Point.is_active == True
             )
-        ).order_by(Point.created_at.desc())
+        )
+        
+        # إضافة فلتر التاريخ فقط إذا كان محدد
+        if start_date is not None and end_date is not None:
+            filtered_points_query = filtered_points_query.filter(
+                and_(
+                    Point.created_at >= start_date,
+                    Point.created_at <= end_date
+                )
+            )
+        
+        filtered_points_query = filtered_points_query.order_by(Point.created_at.desc())
 
         filtered_notes = []
         for point in filtered_points_query.all():
@@ -228,18 +238,26 @@ def get_member_details(member_id):
         #         'created_by': point.creator.username if point.creator else None
         #     })
 
-        # هذا الجزء يمكن تعديله ليستخدم 'period' و 'start_date'/'end_date' الجديدة
-        # حالياً، هو يستخدم منطق الأسبوع الحالي/السابق الخاص به
-        filtered_chat_activities = Point.query.filter(
+        # إحصائيات فعاليات الشات بناءً على الفترة المحددة
+        chat_activities_query = Point.query.filter(
             and_(
                 Point.member_id == member.id,
                 Point.point_type == 'positive',
                 Point.category == 'فعالية في الشات العام',
-                Point.created_at >= start_date,
-                Point.created_at <= end_date,
                 Point.is_active == True
             )
-        ).count()
+        )
+        
+        # إضافة فلتر التاريخ فقط إذا كان محدد
+        if start_date is not None and end_date is not None:
+            chat_activities_query = chat_activities_query.filter(
+                and_(
+                    Point.created_at >= start_date,
+                    Point.created_at <= end_date
+                )
+            )
+        
+        filtered_chat_activities = chat_activities_query.count()
 
         return jsonify({
             'member': member.to_dict(),
