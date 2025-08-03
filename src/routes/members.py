@@ -107,16 +107,16 @@ def get_member_details(member_id):
         if not member:
             return jsonify({'error': 'العضو غير موجود'}), 404
         
-        period = request.args.get(\'period\', \'all\')
-        start_date_str = request.args.get(\'start_date\')
-        end_date_str = request.args.get(\'end_date\')
-        note_type = request.args.get(\'note_type\', \'negative\') # الافتراضي ملاحظات سلبية
+        period = request.args.get('period', 'all')
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        note_type = request.args.get('note_type', 'negative') # الافتراضي ملاحظات سلبية
 
         start_date, end_date = get_saudi_date_range(period, start_date_str, end_date_str)
 
         all_points = Point.query.filter_by(member_id=member.id, is_active=True).all()
-        total_positive = len([p for p in all_points if p.point_type == \'positive\'])
-        total_negative = len([p for p in all_points if p.point_type == \'negative\'])
+        total_positive = len([p for p in all_points if p.point_type == 'positive'])
+        total_negative = len([p for p in all_points if p.point_type == 'negative'])
         
         # تحديث حسابات الأسبوع الحالي والسابق لاستخدام get_saudi_now
         current_saudi_now = get_saudi_now()
@@ -131,8 +131,8 @@ def get_member_details(member_id):
                 Point.is_active == True
             )
         ).all()
-        current_week_positive = len([p for p in current_week_points if p.point_type == \'positive\'])
-        current_week_negative = len([p for p in current_week_points if p.point_type == \'negative\'])
+        current_week_positive = len([p for p in current_week_points if p.point_type == 'positive'])
+        current_week_negative = len([p for p in current_week_points if p.point_type == 'negative'])
         
         previous_week_points = Point.query.filter(
             and_(
@@ -142,18 +142,18 @@ def get_member_details(member_id):
                 Point.is_active == True
             )
         ).all()
-        previous_week_positive = len([p for p in previous_week_points if p.point_type == \'positive\'])
-        previous_week_negative = len([p for p in previous_week_points if p.point_type == \'negative\'])
+        previous_week_positive = len([p for p in previous_week_points if p.point_type == 'positive'])
+        previous_week_negative = len([p for p in previous_week_points if p.point_type == 'negative'])
         
         current_total = current_week_positive - current_week_negative
         previous_total = previous_week_positive - previous_week_negative
         
         if current_total > previous_total:
-            performance = \'متحسن\'
+            performance = 'متحسن'
         elif current_total < previous_total:
-            performance = \'متراجع\'
+            performance = 'متراجع'
         else:
-            performance = \'ثابت\'
+            performance = 'ثابت'
         
         # استعلام الملاحظات بناءً على note_type والفترة الزمنية
         notes_query = Point.query.filter(
@@ -177,19 +177,19 @@ def get_member_details(member_id):
         notes_data = []
         for point in recent_notes:
             notes_data.append({
-                \'id\': point.id,
-                \'category\': point.category,
-                \'description\': point.description,
-                \'created_at\': point.created_at.isoformat(),
-                \'created_by\': point.creator.username if point.creator else None,
-                \'point_type\': point.point_type # إضافة نوع النقطة لتحديد اللون في الواجهة
+                'id': point.id,
+                'category': point.category,
+                'description': point.description,
+                'created_at': point.created_at.isoformat(),
+                'created_by': point.creator.username if point.creator else None,
+                'point_type': point.point_type # إضافة نوع النقطة لتحديد اللون في الواجهة
             })
 
         filtered_query = Point.query.filter(
             and_(
                 Point.member_id == member.id,
-                Point.point_type == \'positive\',
-                Point.category == \'فعالية في الشات العام\',
+                Point.point_type == 'positive',
+                Point.category == 'فعالية في الشات العام',
                 Point.is_active == True
             )
         )
@@ -205,19 +205,19 @@ def get_member_details(member_id):
         filtered_chat_activities = filtered_query.count()
         
         return jsonify({
-            \'member\': member.to_dict(),
-            \'statistics\': {
-                \'total_positive\': total_positive,
-                \'total_negative\': total_negative,
-                \'filtered_chat_activities\': filtered_chat_activities,
-                \'current_week_positive\': current_week_positive,
-                \'current_week_negative\': current_week_negative,
-                \'previous_week_positive\': previous_week_positive,
-                \'previous_week_negative\': previous_week_negative,
-                \'performance\': performance
+            'member': member.to_dict(),
+            'statistics': {
+                'total_positive': total_positive,
+                'total_negative': total_negative,
+                'filtered_chat_activities': filtered_chat_activities,
+                'current_week_positive': current_week_positive,
+                'current_week_negative': current_week_negative,
+                'previous_week_positive': previous_week_positive,
+                'previous_week_negative': previous_week_negative,
+                'performance': performance
             },
-            \'notes\': notes_data, # تغيير negative_notes إلى notes
-            \'note_type\': note_type # إضافة نوع الملاحظة الحالي
+            'notes': notes_data, # تغيير negative_notes إلى notes
+            'note_type': note_type # إضافة نوع الملاحظة الحالي
         }), 200
         
     except Exception as e:
