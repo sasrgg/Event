@@ -124,7 +124,7 @@ def get_member_details(member_id):
         if not member:
             return jsonify({'error': 'العضو غير موجود'}), 404
 
-        period = request.args.get('period', 'all')
+        period = request.args.get('period', 'week')  # الافتراضي هو 'week'
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
         note_type = request.args.get('note_type', 'negative')  # الافتراضي هو 'negative'
@@ -145,7 +145,7 @@ def get_member_details(member_id):
             end_date = None
         else:
             # الافتراضي إذا لم يتم تحديد فترة صالحة
-            start_date, end_date = get_saudi_date_range('all')
+            start_date, end_date = get_saudi_date_range('week')
 
         # جلب الملاحظات بناءً على نوع الملاحظة والفترة الزمنية
         filtered_points_query = Point.query.filter(
