@@ -273,7 +273,14 @@
                     </div>
                 </div>
                 <div class="negative-notes">
-                    <h4>الملاحظات السلبية (آخر أسبوع)</h4>
+                    <div class="filter-group">
+                        <label>نوع الملاحظة:</label>
+                        <select id="note-type-filter">
+                            <option value="negative">الملاحظات السلبية</option>
+                            <option value="positive">الملاحظات الإيجابية</option>
+                        </select>
+                    </div>
+                    <h4>الملاحظات (<span id="notes-period-display">آخر أسبوع</span>)</h4>
                     <div id="negative-notes-list" class="notes-list"></div>
                 </div>
             </div>
