@@ -139,8 +139,8 @@
                     <form id="add-point-form" class="points-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="point-member">العضو</label>
-                                <select id="point-member" name="member_id" required>
+                                <label for="member-select">العضو</label>
+                                <select id="member-select" name="member_id" required>
                                     <option value="">اختر العضو</option>
                                 </select>
                             </div>
@@ -181,26 +181,11 @@
                 </div>
                 <div class="filters-container">
                     <div class="filter-group">
-                        <label>نوع العملية:</label>
-                        <select id="action-filter">
-                            <option value="">جميع العمليات</option>
-                            <option value="create">إضافة</option>
-                            <option value="update">تحديث</option>
-                            <option value="delete">حذف</option>
-                            <option value="reactivate">اعادة تفعيل</option>
-                            <option value="login">تسجيل دخول</option>
-                        </select>
+                        <input type="date" id="logs-start-date">
+                        <span>إلى</span>
+                        <input type="date" id="logs-end-date">
+                        <button id="apply-logs-filter" class="btn btn-secondary">بحث</button>
                     </div>
-                    <div class="filter-group">
-                        <label>نوع الهدف:</label>
-                        <select id="target-filter">
-                            <option value="">جميع الأهداف</option>
-                            <option value="user">مستخدم</option>
-                            <option value="member">عضو</option>
-                            <option value="point">نقطة</option>
-                        </select>
-                    </div>
-                    <button id="apply-logs-filter" class="btn btn-secondary">بحث</button>
                 </div>
                 <div id="logs-list" class="logs-container">
                 </div>
@@ -221,74 +206,74 @@
         </div>
     </div>
 
+    <!-- مودال تفاصيل العضو مع فلاتر الفترة الزمنية -->
     <div id="member-details-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="member-details-name"></h3>
+                <h3>تفاصيل العضو: <span id="modal-member-name"></span></h3>
+                <span id="modal-member-id" style="display: none;"></span>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- فلاتر الفترة الزمنية الخاصة بالمودال -->
+                <div class="modal-filters-container">
+                    <div class="filter-group">
+                        <label>الفترة الزمنية:</label>
+                        <select id="modal-period-filter">
+                            <option value="all">جميع الأوقات</option>
+                            <option value="today">اليوم</option>
+                            <option value="week">هذا الأسبوع</option>
+                            <option value="month">هذا الشهر</option>
+                            <option value="custom">فترة مخصصة</option>
+                        </select>
+                    </div>
+                    <div id="modal-custom-dates" class="filter-group" style="display: none;">
+                        <input type="date" id="modal-start-date">
+                        <span>إلى</span>
+                        <input type="date" id="modal-end-date">
+                        <button id="modal-apply-filter" class="btn btn-secondary">تطبيق</button>
+                    </div>
+                </div>
+                
                 <div class="member-stats">
                     <div class="stat-card">
                         <h4>الإحصائيات العامة</h4>
                         <div class="stats-grid">
                             <div class="stat-item">
-                                <span class="stat-label">إجمالي الإيجابيات:</span>
-                                <span id="total-positive" class="stat-value positive"></span>
+                                <span class="stat-label">الإيجابيات:</span>
+                                <span id="modal-positive-count" class="stat-value positive"></span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">إجمالي السلبيات:</span>
-                                <span id="total-negative" class="stat-value negative"></span>
+                                <span class="stat-label">السلبيات:</span>
+                                <span id="modal-negative-count" class="stat-value negative"></span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">إجمالي فعاليات الشات حسب الفترة:</span>
-                                <span id="chat-activities" class="stat-value chat-activities"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <h4>مقارنة الأسابيع</h4>
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <span class="stat-label">الأسبوع الحالي (إيجابي):</span>
-                                <span id="current-week-positive" class="stat-value positive"></span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">الأسبوع السابق (إيجابي):</span>
-                                <span id="previous-week-positive" class="stat-value positive"></span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">الأسبوع الحالي (سلبي):</span>
-                                <span id="current-week-negative" class="stat-value negative"></span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">الأسبوع السابق (سلبي):</span>
-                                <span id="previous-week-negative" class="stat-value negative"></span>
+                                <span class="stat-label">المجموع:</span>
+                                <span id="modal-total-points" class="stat-value"></span>
                             </div>
                         </div>
                         <div class="performance-indicator">
                             <span class="stat-label">تقييم الأداء:</span>
-                            <span id="performance-status" class="performance-badge"></span>
+                            <span id="modal-performance" class="performance-badge"></span>
                         </div>
                     </div>
                 </div>
+                
                 <div class="notes-section">
                     <div class="notes-header">
-                        <h4 id="notes-title">الملاحظات السلبية</h4>
-                        <div class="notes-period-info">
-                            <span id="selected-period-display">الفترة المختارة: جميع الأوقات</span>
-                        </div>
+                        <h4>الملاحظات</h4>
                     </div>
                     <div class="notes-filters">
                         <div class="filter-group">
                             <label>نوع الملاحظات:</label>
                             <select id="modal-note-type-filter">
-                                <option value="negative">ملاحظات سلبية</option>
+                                <option value="">جميع الملاحظات</option>
                                 <option value="positive">ملاحظات إيجابية</option>
+                                <option value="negative">ملاحظات سلبية</option>
                             </select>
                         </div>
                     </div>
-                    <div id="notes-list" class="notes-list"></div>
+                    <div id="modal-member-notes" class="notes-list"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -328,6 +313,7 @@
             </div>
             <div class="modal-body">
                 <form id="edit-member-form">
+                    <input type="hidden" id="edit-member-id" name="id">
                     <div class="form-group">
                         <label for="edit-member-name">اسم العضو</label>
                         <input type="text" id="edit-member-name" name="name" required>
@@ -377,58 +363,68 @@
 
     <div id="edit-user-modal" class="modal">
         <div class="modal-content">
-            <span class="modal-close">&times;</span>
-            <h2>تعديل مستخدم</h2>
-            <form id="edit-user-form">
-                <div class="form-group">
-                    <label for="edit-user-username">اسم المستخدم:</label>
-                    <input type="text" id="edit-user-username" name="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="edit-user-password">كلمة المرور الجديدة (اختياري):</label>
-                    <input type="password" id="edit-user-password" name="password" placeholder="اتركه فارغاً لعدم التغيير">
-                </div>
-                <div class="form-group">
-                    <label for="edit-user-role">الدور:</label>
-                    <select id="edit-user-role" name="role" required>
-                        <option value="visor">Visor</option>
-                        <option value="co_leader">Co Leader</option>
-                        <option value="leader">Leader</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
-            </form>
+            <div class="modal-header">
+                <h3>تعديل مستخدم</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-user-form">
+                    <input type="hidden" id="edit-user-id" name="id">
+                    <div class="form-group">
+                        <label for="edit-user-username">اسم المستخدم:</label>
+                        <input type="text" id="edit-user-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-password">كلمة المرور الجديدة (اختياري):</label>
+                        <input type="password" id="edit-user-password" name="password" placeholder="اتركه فارغاً لعدم التغيير">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-user-role">الدور:</label>
+                        <select id="edit-user-role" name="role" required>
+                            <option value="visor">Visor</option>
+                            <option value="co_leader">Co Leader</option>
+                            <option value="leader">Leader</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary modal-close">إلغاء</button>
+                <button type="submit" form="edit-user-form" class="btn btn-primary">حفظ التعديلات</button>
+            </div>
         </div>
     </div>
+
+    <!-- مودال التأكيد -->
     <div id="confirm-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="confirm-modal-title">تأكيد الإجراء</h3>
-                <button class="modal-close">&times;</button>
+                <h3>تأكيد العملية</h3>
             </div>
             <div class="modal-body">
                 <p id="confirm-modal-message"></p>
             </div>
             <div class="modal-footer">
-                <button id="confirm-modal-cancel" class="btn btn-secondary modal-close">إلغاء</button>
                 <button id="confirm-modal-ok" class="btn btn-danger">تأكيد</button>
+                <button class="btn btn-secondary modal-close">إلغاء</button>
             </div>
         </div>
     </div>
 
-    <div id="notification" class="notification">
+    <!-- شاشة التحميل -->
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- الإشعارات -->
+    <div id="notification" class="notification" style="display: none;">
         <div class="notification-content">
             <span id="notification-message"></span>
             <button id="notification-close" class="notification-close">&times;</button>
         </div>
     </div>
 
-    <div id="loading" class="loading" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>جاري التحميل...</p>
-    </div>
-
-     <script src="timezone-utils.js"></script>
-    <script src="script.js"></script>
+    <script src="script_modified.js"></script>
 </body>
 </html>
+

@@ -6,6 +6,11 @@ let negativeCategories = {};
 let confirmCallback = null;
 let cancelCallback = null;
 let notificationTimeout = null;
+// متغيرات جديدة لإدارة فلاتر مودال تفاصيل العضو
+let currentMemberDetailsPeriod = 'all';
+let currentMemberDetailsStartDate = null;
+let currentMemberDetailsEndDate = null;
+let currentMemberId = null;
 
 const fetchOptions = (options = {}) => {
     const defaultOptions = {
@@ -52,6 +57,11 @@ function setupEventListeners() {
 
     // إضافة event listener لتغيير نوع الملاحظات
     document.getElementById('modal-note-type-filter').addEventListener('change', refreshMemberNotes);
+    
+    // إضافة event listeners للفلاتر داخل مودال تفاصيل العضو
+    document.getElementById('modal-period-filter').addEventListener('change', handleModalPeriodChange);
+    document.getElementById('modal-apply-filter').addEventListener('click', applyModalCustomFilter);
+    
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', function() { switchTab(this.dataset.tab); });
     });
@@ -289,7 +299,7 @@ function displayMembers(members) {
                 <div class="stat-item"><span class="stat-label">السلبيات</span><span class="stat-value negative">${member.negative_count}</span></div>
                 <div class="stat-item"><span class="stat-label">المجموع</span><span class="stat-value ${member.total_points >= 0 ? 'positive' : 'negative'}">${member.total_points}</span></div>
             </div>
-            <div class="member-actions"><button class="btn btn-secondary" onclick="event.stopPropagation(); showMemberDetails(${member.id})">التفاصيل</button></div>
+            <div class="member-actions"><button class="btn btn-secondary" onclick="event.stopPropagation(); showMemberDetails(${member.id}, document.getElementById('period-filter').value, document.getElementById('start-date').value, document.getElementById('end-date').value)">التفاصيل</button></div>
         </div>`).join('');
 }
 
@@ -299,11 +309,48 @@ function handlePeriodChange() {
 }
 const applyCustomFilter = () => loadMembers();
 
+// دالة جديدة لمعالجة تغيير الفترة داخل مودال تفاصيل العضو
+function handleModalPeriodChange() {
+    const modalPeriodFilter = document.getElementById('modal-period-filter');
+    const modalCustomDates = document.getElementById('modal-custom-dates');
+    
+    if (modalPeriodFilter.value === 'custom') {
+        modalCustomDates.style.display = 'flex';
+    } else {
+        modalCustomDates.style.display = 'none';
+        // إعادة تحميل بيانات العضو مباشرة عند تغيير الفترة (غير مخصصة)
+        currentMemberDetailsPeriod = modalPeriodFilter.value;
+        currentMemberDetailsStartDate = null;
+        currentMemberDetailsEndDate = null;
+        if (currentMemberId) {
+            showMemberDetails(currentMemberId, currentMemberDetailsPeriod);
+        }
+    }
+}
+
+// دالة جديدة لتطبيق الفلتر المخصص داخل مودال تفاصيل العضو
+function applyModalCustomFilter() {
+    const modalPeriodFilter = document.getElementById('modal-period-filter');
+    const modalStartDate = document.getElementById('modal-start-date');
+    const modalEndDate = document.getElementById('modal-end-date');
+    
+    currentMemberDetailsPeriod = modalPeriodFilter.value;
+    currentMemberDetailsStartDate = modalStartDate.value;
+    currentMemberDetailsEndDate = modalEndDate.value;
+    
+    if (currentMemberId) {
+        showMemberDetails(currentMemberId, currentMemberDetailsPeriod, currentMemberDetailsStartDate, currentMemberDetailsEndDate);
+    }
+}
+
 function handleMemberCardClick(e) {
     if (window.innerWidth > 768) return;
     const card = e.target.closest('.member-card');
     if (card && card.dataset.id) {
-        showMemberDetails(card.dataset.id);
+        const period = document.getElementById('period-filter').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        showMemberDetails(card.dataset.id, period, startDate, endDate);
     }
 }
 
@@ -345,6 +392,109 @@ function displayRecentPoints(points) {
                 ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${point.id}, '${point.member_name}', '${point.category}')">حذف</button>` : ''}
             </div>
         </div>`).join('');
+}
+
+function populateMembersSelect(members) {
+    const select = document.getElementById('member-select');
+    select.innerHTML = '<option value="">اختر العضو</option>' + 
+        members.map(member => `<option value="${member.id}">${member.name}</option>`).join('');
+}
+
+function updatePointCategories() {
+    const type = document.getElementById('point-type').value;
+    const select = document.getElementById('point-category');
+    const categories = type === 'positive' ? positiveCategories : type === 'negative' ? negativeCategories : [];
+    select.innerHTML = '<option value="">اختر الفئة</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+// دالة معدلة لعرض تفاصيل العضو مع دعم الفلاتر المنفصلة
+async function showMemberDetails(memberId, period = null, startDate = null, endDate = null) {
+    showLoading();
+    try {
+        // تحديد الفلاتر المستخدمة
+        const periodToUse = period !== null ? period : currentMemberDetailsPeriod;
+        const startDateToUse = startDate !== null ? startDate : currentMemberDetailsStartDate;
+        const endDateToUse = endDate !== null ? endDate : currentMemberDetailsEndDate;
+        
+        // تحديث المتغيرات الحالية
+        currentMemberDetailsPeriod = periodToUse;
+        currentMemberDetailsStartDate = startDateToUse;
+        currentMemberDetailsEndDate = endDateToUse;
+        currentMemberId = memberId;
+        
+        // بناء URL للطلب
+        let url = `/api/members/${memberId}?period=${periodToUse}`;
+        if (periodToUse === 'custom' && startDateToUse && endDateToUse) {
+            url += `&start_date=${startDateToUse}&end_date=${endDateToUse}`;
+        }
+        
+        const response = await fetch(url, fetchOptions());
+        const data = await response.json();
+        if (response.ok) {
+            displayMemberDetails(data.member);
+            
+            // تحديث فلاتر المودال لتعكس الحالة الحالية
+            document.getElementById('modal-period-filter').value = periodToUse;
+            if (periodToUse === 'custom') {
+                document.getElementById('modal-start-date').value = startDateToUse || '';
+                document.getElementById('modal-end-date').value = endDateToUse || '';
+                document.getElementById('modal-custom-dates').style.display = 'flex';
+            } else {
+                document.getElementById('modal-custom-dates').style.display = 'none';
+            }
+            
+            document.getElementById('member-details-modal').classList.add('active');
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل تحميل تفاصيل العضو', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayMemberDetails(member) {
+    document.getElementById('modal-member-name').textContent = member.name;
+    document.getElementById('modal-member-id').textContent = member.id;
+    document.getElementById('modal-positive-count').textContent = member.positive_count;
+    document.getElementById('modal-negative-count').textContent = member.negative_count;
+    document.getElementById('modal-total-points').textContent = member.total_points;
+    document.getElementById('modal-total-points').className = `stat-value ${member.total_points >= 0 ? 'positive' : 'negative'}`;
+    
+    if (member.performance) {
+        document.getElementById('modal-performance').textContent = member.performance;
+        document.getElementById('modal-performance').className = `performance ${getPerformanceClass(member.performance)}`;
+    }
+    
+    displayMemberNotes(member.notes || []);
+}
+
+function displayMemberNotes(notes) {
+    const noteTypeFilter = document.getElementById('modal-note-type-filter').value;
+    const filteredNotes = noteTypeFilter ? notes.filter(note => note.point_type === noteTypeFilter) : notes;
+    
+    const list = document.getElementById('modal-member-notes');
+    list.innerHTML = !filteredNotes || filteredNotes.length === 0 ? '<p class="no-data">لا توجد ملاحظات</p>' :
+    filteredNotes.map(note => `
+        <div class="note-item">
+            <div class="note-info">
+                <div class="note-category">${note.category}</div>
+                ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
+                <div class="note-date">${formatDate(note.created_at)}</div>
+                <div class="note-creator">أضافها: ${note.creator_name || 'غير محدد'}</div>
+            </div>
+            <div class="note-actions">
+                <span class="note-type ${note.point_type}">${note.point_type === 'positive' ? 'إيجابية' : 'سلبية'}</span>
+                ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${note.id}, '${note.member_name}', '${note.category}')">حذف</button>` : ''}
+            </div>
+        </div>`).join('');
+}
+
+function refreshMemberNotes() {
+    if (currentMemberId) {
+        showMemberDetails(currentMemberId, currentMemberDetailsPeriod, currentMemberDetailsStartDate, currentMemberDetailsEndDate);
+    }
 }
 
 function formatDate(dateString) {
@@ -412,213 +562,29 @@ function showConfirmModal(message, onConfirm, onCancel = null) {
 function handleConfirm() {
     if (typeof confirmCallback === 'function') {
         confirmCallback();
+        confirmCallback = null;
+        cancelCallback = null;
     }
     closeModal(document.getElementById('confirm-modal'));
-    confirmCallback = null;
-    cancelCallback = null;
-}
-
-function populateMembersSelect(members) {
-    const select = document.getElementById('point-member');
-    select.innerHTML = '<option value="">اختر العضو</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-}
-function updatePointCategories() {
-    const type = document.getElementById('point-type').value;
-    const select = document.getElementById('point-category');
-    const categories = type === 'positive' ? positiveCategories : type === 'negative' ? negativeCategories : [];
-    select.innerHTML = '<option value="">اختر الفئة</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
-}
-
-async function showMemberDetails(memberId) {
-    showLoading();
-    try {
-        const periodFilter = document.getElementById('period-filter').value;
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-        const noteType = 'negative'; // الافتراضي عند فتح modal
-
-        let url = `/api/members/${memberId}`;
-        const params = new URLSearchParams();
-        
-        if (periodFilter) {
-            params.append('period', periodFilter);
-            if (periodFilter === 'custom' && startDate && endDate) {
-                params.append('start_date', startDate);
-                params.append('end_date', endDate);
-            }
-        }
-        
-        params.append('note_type', noteType);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        const response = await fetch(url, fetchOptions());
-        if (response.ok) {
-            const data = await response.json();
-            const modal = document.getElementById('member-details-modal');
-            const { member, statistics, notes, note_type } = data;
-            modal.dataset.memberId = member.id;
-            document.getElementById('member-details-name').textContent = member.name;
-            document.getElementById('total-positive').textContent = statistics.total_positive;
-            document.getElementById('total-negative').textContent = statistics.total_negative;
-            document.getElementById('chat-activities').textContent = statistics.filtered_chat_activities || 0;
-            document.getElementById('current-week-positive').textContent = statistics.current_week_positive;
-            document.getElementById('previous-week-positive').textContent = statistics.previous_week_positive;
-            document.getElementById('current-week-negative').textContent = statistics.current_week_negative;
-            document.getElementById('previous-week-negative').textContent = statistics.previous_week_negative;
-            const perfStatus = document.getElementById('performance-status');
-            perfStatus.textContent = statistics.performance;
-            perfStatus.className = `performance-badge ${getPerformanceClass(statistics.performance)}`;
-            
-            // تحديث عرض الفترة المختارة
-            updateSelectedPeriodDisplay();
-            
-            // تعيين قيمة فلتر نوع الملاحظات في modal
-            document.getElementById('modal-note-type-filter').value = note_type;
-            
-            const notesList = document.getElementById('notes-list');
-            const notesTitle = document.getElementById('notes-title');
-            
-            // تحديث عنوان الملاحظات
-            notesTitle.textContent = note_type === 'positive' ? 'الملاحظات الإيجابية' : 'الملاحظات السلبية';
-            
-            // تحديث قائمة الملاحظات
-            notesList.innerHTML = notes.length === 0 ? 
-                `<p class="no-data">لا توجد ${note_type === 'positive' ? 'ملاحظات إيجابية' : 'ملاحظات سلبية'}</p>` :
-                notes.map(note => `
-                <div class="note-item ${note.point_type === 'positive' ? 'positive-note' : 'negative-note'}">
-                    <div class="note-category">${note.category}</div>
-                    ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
-                    <div class="note-date">${formatDate(note.created_at)}</div>
-                </div>`).join('');
-            
-            const canEdit = currentUser.role === 'leader' || currentUser.role === 'co_leader';
-            const canDelete = currentUser.role === 'leader';
-            document.getElementById('edit-member-btn').style.display = canEdit ? 'inline-flex' : 'none';
-            document.getElementById('delete-member-btn').style.display = canDelete ? 'inline-flex' : 'none';
-            modal.classList.add('active');
-        } else {
-            const data = await response.json();
-            showNotification(data.error, 'error');
-        }
-    } catch(e) {
-        showNotification('فشل في عرض تفاصيل العضو', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-async function handleAddMember(e) {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    showLoading();
-    try {
-        const response = await fetch('/api/members', fetchOptions({
-            method: 'POST',
-            body: JSON.stringify(data)
-        }));
-        if(response.ok) {
-            closeModal(document.getElementById('add-member-modal'));
-            loadMembers();
-            showNotification('تم إضافة العضو بنجاح', 'success');
-            e.target.reset();
-        } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
-        }
-    } catch(err) {
-        showNotification('فشل إضافة العضو', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function handleEditMember() {
-    const memberId = document.getElementById('member-details-modal').dataset.memberId;
-    const member = currentMembers.find(m => m.id == memberId);
-    if(member) {
-        document.getElementById('edit-member-modal').dataset.memberId = memberId;
-        document.getElementById('edit-member-name').value = member.name;
-        document.getElementById('edit-member-modal').classList.add('active');
-    }
-}
-
-async function handleEditMemberSubmit(e) {
-    e.preventDefault();
-    const memberId = parseInt(document.getElementById('edit-member-modal').dataset.memberId);
-    const data = Object.fromEntries(new FormData(e.target));
-    showLoading();
-    try {
-        const response = await fetch(`/api/members/${memberId}`, fetchOptions({
-            method: 'PUT',
-            body: JSON.stringify(data)
-        }));
-        if (response.ok) {
-            closeModal(document.getElementById('edit-member-modal'));
-            loadMembers();
-            if(document.getElementById('member-details-modal').classList.contains('active')) {
-               showMemberDetails(memberId);
-            }
-            showNotification('تم تحديث العضو بنجاح', 'success');
-        } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
-        }
-    } catch(err) {
-        showNotification('فشل تحديث العضو', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function requestDeleteMember() {
-    const memberId = parseInt(document.getElementById('member-details-modal').dataset.memberId);
-    const memberName = currentMembers.find(m => m.id === memberId)?.name || '';
-
-    showConfirmModal(`هل أنت متأكد من حذف العضو "${memberName}"؟\nهذا الإجراء سيحذف كل نقاطه أيضاً ولا يمكن التراجع عنه.`, () => {
-        handleDeleteMember(memberId);
-    });
-}
-
-async function handleDeleteMember(memberId) {
-    showLoading();
-    try {
-        const response = await fetch(`/api/members/${memberId}`, fetchOptions({ method: 'DELETE' }));
-        if (response.ok) {
-            closeModal(document.getElementById('member-details-modal'));
-            loadMembers();
-            showNotification('تم حذف العضو بنجاح', 'success');
-        } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
-        }
-    } catch(err) {
-        showNotification('فشل حذف العضو', 'error');
-    } finally {
-        hideLoading();
-    }
 }
 
 async function handleAddPoint(e) {
     e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    data.member_id = parseInt(data.member_id);
+    const pointData = Object.fromEntries(new FormData(e.target));
     showLoading();
     try {
         const response = await fetch('/api/points', fetchOptions({
             method: 'POST',
-            body: JSON.stringify(data)
+            body: JSON.stringify(pointData)
         }));
+        const data = await response.json();
         if (response.ok) {
+            showNotification('تم إضافة النقطة بنجاح!', 'success');
             e.target.reset();
-            updatePointCategories();
             loadRecentPoints();
-            showNotification('تم إضافة النقطة بنجاح', 'success');
+            loadMembers();
         } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
+            showNotification(data.error, 'error');
         }
     } catch (err) {
         showNotification('فشل إضافة النقطة', 'error');
@@ -627,24 +593,151 @@ async function handleAddPoint(e) {
     }
 }
 
+async function handleAddMember(e) {
+    e.preventDefault();
+    const memberData = Object.fromEntries(new FormData(e.target));
+    showLoading();
+    try {
+        const response = await fetch('/api/members', fetchOptions({
+            method: 'POST',
+            body: JSON.stringify(memberData)
+        }));
+        const data = await response.json();
+        if (response.ok) {
+            showNotification('تم إضافة العضو بنجاح!', 'success');
+            closeModal(document.getElementById('add-member-modal'));
+            e.target.reset();
+            loadMembers();
+            loadPointsData();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل إضافة العضو', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function handleAddUser(e) {
+    e.preventDefault();
+    const userData = Object.fromEntries(new FormData(e.target));
+    showLoading();
+    try {
+        const response = await fetch('/api/users', fetchOptions({
+            method: 'POST',
+            body: JSON.stringify(userData)
+        }));
+        const data = await response.json();
+        if (response.ok) {
+            showNotification('تم إضافة المستخدم بنجاح!', 'success');
+            closeModal(document.getElementById('add-user-modal'));
+            e.target.reset();
+            loadUsers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل إضافة المستخدم', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function handleEditMember() {
+    const memberId = document.getElementById('modal-member-id').textContent;
+    const memberName = document.getElementById('modal-member-name').textContent;
+    
+    document.getElementById('edit-member-id').value = memberId;
+    document.getElementById('edit-member-name').value = memberName;
+    
+    closeModal(document.getElementById('member-details-modal'));
+    document.getElementById('edit-member-modal').classList.add('active');
+}
+
+async function handleEditMemberSubmit(e) {
+    e.preventDefault();
+    const memberData = Object.fromEntries(new FormData(e.target));
+    const memberId = memberData.id;
+    delete memberData.id;
+    
+    showLoading();
+    try {
+        const response = await fetch(`/api/members/${memberId}`, fetchOptions({
+            method: 'PUT',
+            body: JSON.stringify(memberData)
+        }));
+        const data = await response.json();
+        if (response.ok) {
+            showNotification('تم تحديث العضو بنجاح!', 'success');
+            closeModal(document.getElementById('edit-member-modal'));
+            loadMembers();
+            loadPointsData();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل تحديث العضو', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function requestDeleteMember() {
+    const memberId = document.getElementById('modal-member-id').textContent;
+    const memberName = document.getElementById('modal-member-name').textContent;
+    
+    showConfirmModal(
+        `هل أنت متأكد من حذف العضو "${memberName}"؟\nسيتم حذف جميع النقاط المرتبطة بهذا العضو.`,
+        () => deleteMember(memberId)
+    );
+}
+
+async function deleteMember(memberId) {
+    showLoading();
+    try {
+        const response = await fetch(`/api/members/${memberId}`, fetchOptions({
+            method: 'DELETE'
+        }));
+        const data = await response.json();
+        if (response.ok) {
+            showNotification('تم حذف العضو بنجاح!', 'success');
+            closeModal(document.getElementById('member-details-modal'));
+            loadMembers();
+            loadPointsData();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل حذف العضو', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
 function requestDeletePoint(pointId, memberName, category) {
-    const message = `هل أنت متأكد من حذف هذه النقطة؟\n\nالعضو: ${memberName}\nالفئة: ${category}`;
-    showConfirmModal(message, () => deletePoint(pointId));
+    showConfirmModal(
+        `هل أنت متأكد من حذف النقطة "${category}" للعضو "${memberName}"؟`,
+        () => deletePoint(pointId)
+    );
 }
 
 async function deletePoint(pointId) {
     showLoading();
     try {
-        const response = await fetch(`/api/points/${pointId}`, fetchOptions({ method: 'DELETE' }));
+        const response = await fetch(`/api/points/${pointId}`, fetchOptions({
+            method: 'DELETE'
+        }));
+        const data = await response.json();
         if (response.ok) {
+            showNotification('تم حذف النقطة بنجاح!', 'success');
             loadRecentPoints();
-            if(document.querySelector('.tab-btn[data-tab="members"]').classList.contains('active')) {
-                loadMembers();
+            loadMembers();
+            if (currentMemberId) {
+                showMemberDetails(currentMemberId, currentMemberDetailsPeriod, currentMemberDetailsStartDate, currentMemberDetailsEndDate);
             }
-            showNotification('تم حذف النقطة بنجاح', 'success');
         } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
+            showNotification(data.error, 'error');
         }
     } catch (err) {
         showNotification('فشل حذف النقطة', 'error');
@@ -656,201 +749,104 @@ async function deletePoint(pointId) {
 async function loadLogs() {
     showLoading();
     try {
-        const actionFilter = document.getElementById('action-filter').value;
-        const targetFilter = document.getElementById('target-filter').value;
-        const query = new URLSearchParams({
-            action_type: actionFilter,
-            target_type: targetFilter
-        }).toString();
-
-        const response = await fetch(`/api/logs?${query}`, fetchOptions());
+        const startDate = document.getElementById('logs-start-date').value;
+        const endDate = document.getElementById('logs-end-date').value;
+        let url = '/api/logs';
+        if (startDate && endDate) {
+            url += `?start_date=${startDate}&end_date=${endDate}`;
+        }
+        const response = await fetch(url, fetchOptions());
         const data = await response.json();
-        const list = document.getElementById('logs-list');
-        list.innerHTML = !data.logs || data.logs.length === 0 ? '<p class="no-data">لا توجد سجلات</p>' : 
-        data.logs.map(log => `
-            <div class="log-item">
-                <div class="log-header">
-                    <span class="log-action ${log.action_type || 'unknown'}">${getActionDisplayName(log.action_type || 'غير معروف')}</span>
-                    <span class="log-date">${formatDate(log.created_at)}</span>
-                </div>
-                <div class="log-details">${log.details}</div>
-                <div class="log-creator">بواسطة: ${log.creator_name || 'غير معروف'}</div>
-            </div>
-        `).join('');
-    } catch(err) {
+        if (response.ok) {
+            displayLogs(data.logs);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
         showNotification('فشل تحميل السجلات', 'error');
     } finally {
         hideLoading();
     }
 }
 
+function displayLogs(logs) {
+    const list = document.getElementById('logs-list');
+    list.innerHTML = !logs || logs.length === 0 ? '<p class="no-data">لا توجد سجلات</p>' :
+    logs.map(log => `
+        <div class="log-item">
+            <div class="log-info">
+                <div class="log-user">${log.username}</div>
+                <div class="log-action">${getActionDisplayName(log.action)}</div>
+                <div class="log-details">${log.details || 'لا توجد تفاصيل'}</div>
+                <div class="log-date">${formatDate(log.timestamp)}</div>
+            </div>
+        </div>`).join('');
+}
+
 async function loadUsers() {
     showLoading();
     try {
         const response = await fetch('/api/users', fetchOptions());
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
         const data = await response.json();
-        const list = document.getElementById('users-list');
-        allUsers = Array.isArray(data.users) ? data.users : Array.isArray(data) ? data : [];
-        list.innerHTML = allUsers.length === 0 ? '<p class="no-data">لا يوجد مستخدمون</p>' :
-        allUsers.map(user => `
-            <div class="user-item">
-                <div class="user-info">
-                    <h4>${user.username}</h4>
-                    <span class="user-role-badge ${user.role}">${getRoleDisplayName(user.role)}</span>
-                </div>
-                <div class="user-actions">
-                ${(currentUser.role === 'leader' && user.id !== currentUser.id) ? `
-                    <button class="btn btn-secondary btn-sm" onclick="showEditUserModal(${user.id})">تعديل</button>
-                    <button class="btn btn-danger btn-sm" onclick="requestDeleteUser(${user.id}, '${user.username}')">حذف</button>
-                ` : ''}
-                </div>
-            </div>
-        `).join('');
-    } catch(err) {
-        console.error("Failed to load users:", err);
+        if (response.ok) {
+            allUsers = data.users;
+            displayUsers(allUsers);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
         showNotification('فشل تحميل المستخدمين', 'error');
     } finally {
         hideLoading();
     }
 }
 
-async function handleAddUser(e) {
-    e.preventDefault();
-    const form = e.target;
-    const data = Object.fromEntries(new FormData(form));
-    showLoading();
-    try {
-        const response = await fetch('/api/users', fetchOptions({
-            method: 'POST',
-            body: JSON.stringify(data)
-        }));
-
-        if (response.ok) {
-            closeModal(document.getElementById('add-user-modal'));
-            loadUsers();
-            showNotification('تم إضافة المستخدم بنجاح', 'success');
-            form.reset();
-        } else {
-            const errorData = await response.json();
-            if (response.status === 409 && errorData.error === 'USER_INACTIVE') {
-                showConfirmModal(
-                    `المستخدم "${data.username}" موجود بالفعل ولكنه غير مفعل.\n\n- اضغط <b>موافق</b> لإعادة تفعيله.\n- اضغط <b>إلغاء</b> لعرض خيار الحذف والإنشاء من جديد.`,
-                    () => {
-                        handleReactivateUser(errorData.user_id, data.username);
-                    },
-                    () => {
-                        closeModal(document.getElementById('confirm-modal'));
-                        setTimeout(() => {
-                            showConfirmModal(
-                                `⚠️ <b>تحذير خطير</b> ⚠️\n\nهل أنت متأكد من رغبتك في <b>حذف</b> المستخدم القديم "${data.username}" بكل بياناته (السجلات، النقاط، إلخ) وإنشاء مستخدم جديد ونظيف بنفس الاسم؟\n\n<b>لا يمكن التراجع عن هذا الإجراء!</b>`,
-                                () => {
-                                    handleForceCreateUser(data);
-                                }
-                            );
-                        }, 300);
-                    }
-                );
-            } else {
-                showNotification(errorData.error, 'error');
-            }
-        }
-    } catch (e) {
-        showNotification('فشل إضافة المستخدم', 'error');
-    } finally {
-        hideLoading();
-    }
+function displayUsers(users) {
+    const list = document.getElementById('users-list');
+    list.innerHTML = !users || users.length === 0 ? '<p class="no-data">لا يوجد مستخدمين</p>' :
+    users.map(user => `
+        <div class="user-card">
+            <div class="user-info">
+                <div class="user-name">${user.username}</div>
+                <div class="user-role">${getRoleDisplayName(user.role)}</div>
+                <div class="user-status ${user.is_active ? 'active' : 'inactive'}">${user.is_active ? 'نشط' : 'غير نشط'}</div>
+            </div>
+            <div class="user-actions">
+                <button class="btn btn-secondary" onclick="editUser(${user.id}, '${user.username}', '${user.role}', ${user.is_active})">تعديل</button>
+                ${user.is_active ? 
+                    `<button class="btn btn-warning" onclick="requestDeactivateUser(${user.id}, '${user.username}')">إلغاء تفعيل</button>` :
+                    `<button class="btn btn-success" onclick="requestReactivateUser(${user.id}, '${user.username}')">إعادة تفعيل</button>`
+                }
+            </div>
+        </div>`).join('');
 }
 
-async function handleReactivateUser(userId, username) {
-    showLoading();
-    try {
-        const response = await fetch(`/api/users/${userId}/reactivate`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({})
-        });
-
-        if (response.ok) {
-            closeModal(document.getElementById('add-user-modal'));
-            loadUsers();
-            showNotification(`تمت إعادة تفعيل المستخدم "${username}" بنجاح.`, 'success');
-        } else {
-            const errorData = await response.json().catch(() => ({}));
-            showNotification(errorData.error || 'فشل في إعادة تفعيل المستخدم.', 'error');
-        }
-    } catch (err) {
-        showNotification('فشل في إعادة تفعيل المستخدم.', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-async function handleForceCreateUser(userData) {
-    showLoading();
-    try {
-        const response = await fetch('/api/users/force-create', fetchOptions({
-            method: 'POST',
-            body: JSON.stringify(userData)
-        }));
-
-        if (response.ok) {
-            closeModal(document.getElementById('add-user-modal'));
-            loadUsers();
-            showNotification(`تم إنشاء المستخدم "${userData.username}" من جديد.`, 'success');
-        } else {
-            const errorData = await response.json();
-            showNotification(errorData.error || 'فشل إنشاء المستخدم الجديد.', 'error');
-        }
-    } catch (err) {
-        showNotification('فشل إنشاء المستخدم الجديد.', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-function showEditUserModal(userId) {
-    const user = allUsers.find(u => u.id === userId);
-    if (!user) return;
-    const modal = document.getElementById('edit-user-modal');
-    modal.dataset.userId = userId;
-    document.getElementById('edit-user-username').value = user.username;
-    document.getElementById('edit-user-role').value = user.role;
-    document.getElementById('edit-user-password').value = '';
-    modal.classList.add('active');
+function editUser(userId, username, role, isActive) {
+    document.getElementById('edit-user-id').value = userId;
+    document.getElementById('edit-user-username').value = username;
+    document.getElementById('edit-user-role').value = role;
+    document.getElementById('edit-user-modal').classList.add('active');
 }
 
 async function handleEditUserSubmit(e) {
     e.preventDefault();
-    const modal = document.getElementById('edit-user-modal');
-    const userId = modal.dataset.userId;
-    const formData = new FormData(e.target);
-    const data = {
-        username: formData.get('username'),
-        role: formData.get('role'),
-    };
-    const password = formData.get('password');
-    if (password) {
-        data.password = password;
-    }
+    const userData = Object.fromEntries(new FormData(e.target));
+    const userId = userData.id;
+    delete userData.id;
+    
     showLoading();
     try {
         const response = await fetch(`/api/users/${userId}`, fetchOptions({
             method: 'PUT',
-            body: JSON.stringify(data)
+            body: JSON.stringify(userData)
         }));
+        const data = await response.json();
         if (response.ok) {
-            closeModal(modal);
+            showNotification('تم تحديث المستخدم بنجاح!', 'success');
+            closeModal(document.getElementById('edit-user-modal'));
             loadUsers();
-            showNotification('تم تحديث المستخدم بنجاح', 'success');
         } else {
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
+            showNotification(data.error, 'error');
         }
     } catch (err) {
         showNotification('فشل تحديث المستخدم', 'error');
@@ -859,125 +855,68 @@ async function handleEditUserSubmit(e) {
     }
 }
 
-function requestDeleteUser(userId, username) {
-     showConfirmModal(`هل أنت متأكد من حذف المستخدم "${username}"؟`, () => {
-         handleDeleteUser(userId);
-     });
+function requestDeactivateUser(userId, username) {
+    showConfirmModal(
+        `هل أنت متأكد من إلغاء تفعيل المستخدم "${username}"؟`,
+        () => deactivateUser(userId)
+    );
 }
 
-async function handleDeleteUser(userId) {
+function requestReactivateUser(userId, username) {
+    showConfirmModal(
+        `هل أنت متأكد من إعادة تفعيل المستخدم "${username}"؟`,
+        () => reactivateUser(userId)
+    );
+}
+
+async function deactivateUser(userId) {
     showLoading();
     try {
-        const response = await fetch(`/api/users/${userId}`, fetchOptions({ method: 'DELETE' }));
+        const response = await fetch(`/api/users/${userId}/deactivate`, fetchOptions({
+            method: 'POST'
+        }));
+        const data = await response.json();
         if (response.ok) {
+            showNotification('تم إلغاء تفعيل المستخدم بنجاح!', 'success');
             loadUsers();
-            showNotification('تم حذف المستخدم بنجاح', 'success');
-        } else { 
-            const errorData = await response.json();
-            showNotification(errorData.error, 'error');
-        }
-    } catch(e) {
-        showNotification('فشل حذف المستخدم', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-
-// دالة لتحديث عرض الفترة المختارة
-function updateSelectedPeriodDisplay() {
-    const periodFilter = document.getElementById('period-filter').value;
-    const startDate = document.getElementById('start-date').value;
-    const endDate = document.getElementById('end-date').value;
-    const periodDisplay = document.getElementById('selected-period-display');
-    
-    let periodText = '';
-    switch(periodFilter) {
-        case 'all':
-            periodText = 'جميع الأوقات';
-            break;
-        case 'today':
-            periodText = 'اليوم';
-            break;
-        case 'week':
-            periodText = 'هذا الأسبوع';
-            break;
-        case 'month':
-            periodText = 'هذا الشهر';
-            break;
-        case 'custom':
-            if (startDate && endDate) {
-                periodText = `من ${startDate} إلى ${endDate}`;
-            } else {
-                periodText = 'فترة مخصصة';
-            }
-            break;
-        default:
-            periodText = 'جميع الأوقات';
-    }
-    
-    periodDisplay.textContent = `الفترة المختارة: ${periodText}`;
-}
-
-// دالة لتحديث الملاحظات عند تغيير نوع الملاحظات
-async function refreshMemberNotes() {
-    const modal = document.getElementById('member-details-modal');
-    const memberId = modal.dataset.memberId;
-    
-    if (!memberId) return;
-    
-    showLoading();
-    try {
-        const periodFilter = document.getElementById('period-filter').value;
-        const startDate = document.getElementById('start-date').value;
-        const endDate = document.getElementById('end-date').value;
-        const noteType = document.getElementById('modal-note-type-filter').value;
-
-        let url = `/api/members/${memberId}`;
-        const params = new URLSearchParams();
-        
-        if (periodFilter) {
-            params.append('period', periodFilter);
-            if (periodFilter === 'custom' && startDate && endDate) {
-                params.append('start_date', startDate);
-                params.append('end_date', endDate);
-            }
-        }
-        
-        params.append('note_type', noteType);
-        
-        if (params.toString()) {
-            url += '?' + params.toString();
-        }
-
-        const response = await fetch(url, fetchOptions());
-        if (response.ok) {
-            const data = await response.json();
-            const { notes, note_type } = data;
-            
-            const notesList = document.getElementById('notes-list');
-            const notesTitle = document.getElementById('notes-title');
-            
-            // تحديث عنوان الملاحظات
-            notesTitle.textContent = note_type === 'positive' ? 'الملاحظات الإيجابية' : 'الملاحظات السلبية';
-            
-            // تحديث قائمة الملاحظات
-            notesList.innerHTML = notes.length === 0 ? 
-                `<p class="no-data">لا توجد ${note_type === 'positive' ? 'ملاحظات إيجابية' : 'ملاحظات سلبية'}</p>` :
-                notes.map(note => `
-                <div class="note-item ${note.point_type === 'positive' ? 'positive-note' : 'negative-note'}">
-                    <div class="note-category">${note.category}</div>
-                    ${note.description ? `<div class="note-description">${note.description}</div>` : ''}
-                    <div class="note-date">${formatDate(note.created_at)}</div>
-                </div>`).join('');
         } else {
-            const data = await response.json();
             showNotification(data.error, 'error');
         }
-    } catch(e) {
-        showNotification('فشل في تحديث الملاحظات', 'error');
+    } catch (err) {
+        showNotification('فشل إلغاء تفعيل المستخدم', 'error');
     } finally {
         hideLoading();
     }
+}
+
+async function reactivateUser(userId) {
+    showLoading();
+    try {
+        const response = await fetch(`/api/users/${userId}/reactivate`, fetchOptions({
+            method: 'POST'
+        }));
+        const data = await response.json();
+        if (response.ok) {
+            showNotification('تم إعادة تفعيل المستخدم بنجاح!', 'success');
+            loadUsers();
+        } else {
+            showNotification(data.error, 'error');
+        }
+    } catch (err) {
+        showNotification('فشل إعادة تفعيل المستخدم', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function formatDateForDisplay(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ar-SA', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 

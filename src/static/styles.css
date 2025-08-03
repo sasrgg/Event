@@ -1388,3 +1388,78 @@ body {
     }
 }
 
+
+/* أنماط فلاتر مودال تفاصيل العضو */
+.modal-filters-container {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+.modal-filters-container .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.modal-filters-container .filter-group:last-child {
+    margin-bottom: 0;
+}
+
+.modal-filters-container label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 100px;
+}
+
+.modal-filters-container select,
+.modal-filters-container input[type="date"] {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.modal-filters-container select:focus,
+.modal-filters-container input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(249, 184, 67, 0.2);
+}
+
+#modal-custom-dates {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#modal-custom-dates span {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+#modal-apply-filter {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#modal-apply-filter:hover {
+    background: var(--accent-secondary);
+    transform: translateY(-1px);
+}
+
+/* تحسين عرض معرف العضو المخفي */
+#modal-member-id {
+    display: none;
+}
+
