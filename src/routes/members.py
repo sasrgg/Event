@@ -123,8 +123,7 @@ def get_member_details(member_id):
         if not member:
             return jsonify({'error': 'العضو غير موجود'}), 404
 
-
-                period = request.args.get('period', 'week')  # الافتراضي هو 'week'
+        period = request.args.get('period', 'week')  # الافتراضي هو 'week'
         start_date_str = request.args.get('start_date')
         end_date_str = request.args.get('end_date')
         note_type = request.args.get('note_type', 'negative')  # الافتراضي هو 'negative'
@@ -168,11 +167,13 @@ def get_member_details(member_id):
                 'created_by': point.creator.username if point.creator else None
             })
 
-        
+        # الإحصائيات الحالية (يمكن الاحتفاظ بها أو تعديلها حسب الحاجة)
         all_points = Point.query.filter_by(member_id=member.id, is_active=True).all()
         total_positive = len([p for p in all_points if p.point_type == 'positive'])
         total_negative = len([p for p in all_points if p.point_type == 'negative'])
-        
+
+        # هذه الأجزاء يمكن تعديلها لتستخدم 'period' و 'start_date'/'end_date' الجديدة
+        # حالياً، هي تستخدم منطق الأسبوع الحالي/السابق الخاص بها
         current_week_start = datetime.now() - timedelta(days=7)
         current_week_points = Point.query.filter(
             and_(
@@ -183,7 +184,7 @@ def get_member_details(member_id):
         ).all()
         current_week_positive = len([p for p in current_week_points if p.point_type == 'positive'])
         current_week_negative = len([p for p in current_week_points if p.point_type == 'negative'])
-        
+
         previous_week_start = datetime.now() - timedelta(days=14)
         previous_week_end = datetime.now() - timedelta(days=7)
         previous_week_points = Point.query.filter(
@@ -196,18 +197,19 @@ def get_member_details(member_id):
         ).all()
         previous_week_positive = len([p for p in previous_week_points if p.point_type == 'positive'])
         previous_week_negative = len([p for p in previous_week_points if p.point_type == 'negative'])
-        
+
         current_total = current_week_positive - current_week_negative
         previous_total = previous_week_positive - previous_week_negative
-        
+
         if current_total > previous_total:
             performance = 'متحسن'
         elif current_total < previous_total:
             performance = 'متراجع'
         else:
             performance = 'ثابت'
-        
-       # recent_negative_points = Point.query.filter(
+
+        # هذا الجزء لم يعد مطلوباً لأنه تم استبداله بـ filtered_notes
+        # recent_negative_points = Point.query.filter(
         #     and_(
         #         Point.member_id == member.id,
         #         Point.point_type == 'negative',
@@ -226,8 +228,8 @@ def get_member_details(member_id):
         #         'created_by': point.creator.username if point.creator else None
         #     })
 
-
-        
+        # هذا الجزء يمكن تعديله ليستخدم 'period' و 'start_date'/'end_date' الجديدة
+        # حالياً، هو يستخدم منطق الأسبوع الحالي/السابق الخاص به
         filtered_chat_activities = Point.query.filter(
             and_(
                 Point.member_id == member.id,
@@ -238,7 +240,7 @@ def get_member_details(member_id):
                 Point.is_active == True
             )
         ).count()
-        
+
         return jsonify({
             'member': member.to_dict(),
             'statistics': {
@@ -252,10 +254,10 @@ def get_member_details(member_id):
                 'performance': performance
             },
             'filtered_notes': filtered_notes,  # تم تغيير الاسم إلى filtered_notes
-            'note_type': note_type,
-            'period': period 
+            'note_type': note_type,  # إضافة نوع الملاحظة الحالي
+            'period': period  # إضافة الفترة الزمنية الحالية
         }), 200
-        
+
     except Exception as e:
         return jsonify({'error': f'حدث خطأ: {str(e)}'}), 500
 
