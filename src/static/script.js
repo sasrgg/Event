@@ -310,7 +310,7 @@ function handleMemberCardClick(e) {
 }
 
 async function loadPointsData() {
-    loadRecentPoints(10, false);
+    loadRecentPoints(20, false);
     try {
         const res = await fetch('/api/members?period=all', fetchOptions());
         if (res.ok) {
@@ -320,7 +320,7 @@ async function loadPointsData() {
     } catch (e) { console.error("Failed to load members for points form", e); }
 }
 
-async function loadRecentPoints(limit = 10, append = false) {
+async function loadRecentPoints(limit = 20, append = false) {
     if (!append) {
         recentPointsCurrentPage = 1;
         recentPointsHasMore = true;
@@ -425,7 +425,7 @@ function updateShowMoreButton() {
         btn.textContent = 'عرض المزيد';
         btn.onclick = () => {
             recentPointsCurrentPage++;
-            loadRecentPoints(10, true); // تحميل 10 نقاط إضافية
+            loadRecentPoints(20, true);
         };
         container.appendChild(btn);
     } else {
@@ -700,7 +700,7 @@ async function handleAddPoint(e) {
         if (response.ok) {
             e.target.reset();
             updatePointCategories();
-            loadRecentPoints(10, false);
+            loadRecentPoints(20, false);
             showNotification('تم إضافة النقطة بنجاح', 'success');
         } else {
             const errorData = await response.json();
@@ -723,7 +723,7 @@ async function deletePoint(pointId) {
     try {
         const response = await fetch(`/api/points/${pointId}`, fetchOptions({ method: 'DELETE' }));
         if (response.ok) {
-            loadRecentPoints(10, false);
+            loadRecentPoints(20, false);
             if(document.querySelector('.tab-btn[data-tab="members"]').classList.contains('active')) {
                 loadMembers();
             }
