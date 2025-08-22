@@ -309,17 +309,6 @@ function handleMemberCardClick(e) {
     }
 }
 
-async function loadPointsData() {
-    loadRecentPoints(20, false);
-    try {
-        const res = await fetch('/api/members?period=all', fetchOptions());
-        if (res.ok) {
-            const data = await res.json();
-            populateMembersSelect(data.members);
-        }
-    } catch (e) { console.error("Failed to load members for points form", e); }
-}
-
 async function loadRecentPoints(limit = 20, append = false) {
     if (!append) {
         recentPointsCurrentPage = 1;
@@ -330,7 +319,7 @@ async function loadRecentPoints(limit = 20, append = false) {
 
     showLoading();
     try {
-        const res = await fetch(`/api/points?per_page=${limit}&page=${recentPointsCurrentPage + (append ? 0 : 0)}`, fetchOptions());
+        const res = await fetch(`/api/points?per_page=${limit}&page=${recentPointsCurrentPage}`, fetchOptions());
         if (!res.ok) {
             throw new Error('فشل في جلب البيانات');
         }
@@ -339,22 +328,8 @@ async function loadRecentPoints(limit = 20, append = false) {
 
         if (append) {
             // إلحاق النقاط الجديدة
-            const existingPoints = document.getElementById('recent-points').innerHTML;
-            const newPointsHTML = data.points.map(point => `
-                <div class="point-item">
-                    <div class="point-info">
-                        <div class="point-member">${point.member_name}</div>
-                        <div class="point-category">${point.category}</div>
-                        ${point.description ? `<div class="point-description">${point.description}</div>` : ''}
-                        <div class="point-date">${formatDate(point.created_at)}</div>
-                        <div class="point-creator">أضافها: ${point.creator_name || 'غير محدد'}</div>
-                    </div>
-                    <div class="point-actions">
-                        <span class="point-type ${point.point_type}">${point.point_type === 'positive' ? 'إيجابية' : 'سلبية'}</span>
-                        ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${point.id}, '${point.member_name}', '${point.category}')">حذف</button>` : ''}
-                    </div>
-                </div>`).join('');
-            document.getElementById('recent-points').innerHTML += newPointsHTML;
+            const newPointsHTML = data.points.map(point => createPointItemHTML(point)).join('');
+            document.getElementById('recent-points').insertAdjacentHTML('beforeend', newPointsHTML);
         } else {
             // عرض النتائج الأولى
             displayRecentPoints(data.points);
@@ -362,15 +337,16 @@ async function loadRecentPoints(limit = 20, append = false) {
 
         // تحديث حالة "هل هناك المزيد؟"
         recentPointsHasMore = data.pagination.has_next;
-        updateShowMoreButton();
         
         if (append && data.points.length === 0) {
             showNotification('لا توجد نقاط إضافية.', 'info');
         }
 
-        if (!append) {
-            recentPointsCurrentPage = data.pagination.page;
-        }
+        // تحديث رقم الصفحة فقط عند النجاح
+        recentPointsCurrentPage = data.pagination.page;
+        
+        // تحديث زر "عرض المزيد" في كل الحالات
+        updateShowMoreButton();
 
     } catch (e) {
         console.error("Failed to load recent points", e);
@@ -385,11 +361,18 @@ function displayRecentPoints(points) {
     
     if (!points || points.length === 0) {
         container.innerHTML = '<p class="no-data">لا توجد نقاط حديثة</p>';
-        document.getElementById('show-more-container')?.remove();
         return;
     }
 
-    let html = points.map(point => `
+    let html = points.map(point => createPointItemHTML(point)).join('');
+    container.innerHTML = html;
+    
+    // تأكد من تحديث الزر
+    updateShowMoreButton();
+}
+
+function createPointItemHTML(point) {
+    return `
         <div class="point-item">
             <div class="point-info">
                 <div class="point-member">${point.member_name}</div>
@@ -402,24 +385,22 @@ function displayRecentPoints(points) {
                 <span class="point-type ${point.point_type}">${point.point_type === 'positive' ? 'إيجابية' : 'سلبية'}</span>
                 ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${point.id}, '${point.member_name}', '${point.category}')">حذف</button>` : ''}
             </div>
-        </div>`).join('');
-
-    // أضف زر "عرض المزيد" أسفل القائمة
-    html += '<div id="show-more-container" class="show-more-container"></div>';
-    
-    container.innerHTML = html;
-
-    // تأكد من تحديث الزر
-    updateShowMoreButton();
+        </div>`;
 }
 
 function updateShowMoreButton() {
-    const container = document.getElementById('show-more-container');
-    if (!container) return;
-
-    container.innerHTML = '';
-
+    // إزالة الزر القديم إذا كان موجوداً
+    const oldButton = document.querySelector('.show-more-container');
+    if (oldButton) {
+        oldButton.remove();
+    }
+    
+    // إنشاء زر جديد فقط إذا كان هناك المزيد من النتائج
     if (recentPointsHasMore) {
+        const container = document.getElementById('recent-points');
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'show-more-container';
+        
         const btn = document.createElement('button');
         btn.className = 'btn btn-secondary show-more-btn';
         btn.textContent = 'عرض المزيد';
@@ -427,9 +408,9 @@ function updateShowMoreButton() {
             recentPointsCurrentPage++;
             loadRecentPoints(20, true);
         };
-        container.appendChild(btn);
-    } else {
-        container.innerHTML = '<p class="no-more-points">جميع النقاط مُحمّلة.</p>';
+        
+        buttonContainer.appendChild(btn);
+        container.appendChild(buttonContainer);
     }
 }
 
