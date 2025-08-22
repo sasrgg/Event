@@ -6,6 +6,8 @@ let negativeCategories = {};
 let confirmCallback = null;
 let cancelCallback = null;
 let notificationTimeout = null;
+let recentPointsCurrentPage = 1;
+let recentPointsHasMore = true;
 
 const fetchOptions = (options = {}) => {
     const defaultOptions = {
@@ -308,7 +310,7 @@ function handleMemberCardClick(e) {
 }
 
 async function loadPointsData() {
-    loadRecentPoints();
+    loadRecentPoints(10, false);
     try {
         const res = await fetch('/api/members?period=all', fetchOptions());
         if (res.ok) {
@@ -318,20 +320,76 @@ async function loadPointsData() {
     } catch (e) { console.error("Failed to load members for points form", e); }
 }
 
-async function loadRecentPoints() {
+async function loadRecentPoints(limit = 10, append = false) {
+    if (!append) {
+        recentPointsCurrentPage = 1;
+        recentPointsHasMore = true;
+    }
+
+    if (!recentPointsHasMore && append) return;
+
+    showLoading();
     try {
-        const res = await fetch('/api/points?limit=10', fetchOptions());
-        if (res.ok) {
-            const data = await res.json();
+        const res = await fetch(`/api/points?per_page=${limit}&page=${recentPointsCurrentPage + (append ? 0 : 0)}`, fetchOptions());
+        if (!res.ok) {
+            throw new Error('فشل في جلب البيانات');
+        }
+
+        const data = await res.json();
+
+        if (append) {
+            // إلحاق النقاط الجديدة
+            const existingPoints = document.getElementById('recent-points').innerHTML;
+            const newPointsHTML = data.points.map(point => `
+                <div class="point-item">
+                    <div class="point-info">
+                        <div class="point-member">${point.member_name}</div>
+                        <div class="point-category">${point.category}</div>
+                        ${point.description ? `<div class="point-description">${point.description}</div>` : ''}
+                        <div class="point-date">${formatDate(point.created_at)}</div>
+                        <div class="point-creator">أضافها: ${point.creator_name || 'غير محدد'}</div>
+                    </div>
+                    <div class="point-actions">
+                        <span class="point-type ${point.point_type}">${point.point_type === 'positive' ? 'إيجابية' : 'سلبية'}</span>
+                        ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${point.id}, '${point.member_name}', '${point.category}')">حذف</button>` : ''}
+                    </div>
+                </div>`).join('');
+            document.getElementById('recent-points').innerHTML += newPointsHTML;
+        } else {
+            // عرض النتائج الأولى
             displayRecentPoints(data.points);
         }
-    } catch (e) { console.error("Failed to load recent points", e); }
+
+        // تحديث حالة "هل هناك المزيد؟"
+        recentPointsHasMore = data.pagination.has_next;
+        updateShowMoreButton();
+        
+        if (append && data.points.length === 0) {
+            showNotification('لا توجد نقاط إضافية.', 'info');
+        }
+
+        if (!append) {
+            recentPointsCurrentPage = data.pagination.page;
+        }
+
+    } catch (e) {
+        console.error("Failed to load recent points", e);
+        showNotification('فشل تحميل النقاط الحديثة.', 'error');
+    } finally {
+        hideLoading();
+    }
 }
 
 function displayRecentPoints(points) {
-    const list = document.getElementById('recent-points');
-    list.innerHTML = !points || points.length === 0 ? '<p class="no-data">لا توجد نقاط حديثة</p>' :
-    points.map(point => `
+    const container = document.getElementById('recent-points');
+    
+    if (!points || points.length === 0) {
+        container.innerHTML = '<p class="no-data">لا توجد نقاط حديثة</p>';
+        document.getElementById('show-more-container')?.remove();
+        return;
+    }
+
+    let html = points.map(point => `
         <div class="point-item">
             <div class="point-info">
                 <div class="point-member">${point.member_name}</div>
@@ -345,6 +403,34 @@ function displayRecentPoints(points) {
                 ${(currentUser.role === 'leader' || currentUser.role === 'co_leader') ? `<button class="btn btn-danger btn-sm" onclick="requestDeletePoint(${point.id}, '${point.member_name}', '${point.category}')">حذف</button>` : ''}
             </div>
         </div>`).join('');
+
+    // أضف زر "عرض المزيد" أسفل القائمة
+    html += '<div id="show-more-container" class="show-more-container"></div>';
+    
+    container.innerHTML = html;
+
+    // تأكد من تحديث الزر
+    updateShowMoreButton();
+}
+
+function updateShowMoreButton() {
+    const container = document.getElementById('show-more-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (recentPointsHasMore) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-secondary show-more-btn';
+        btn.textContent = 'عرض المزيد';
+        btn.onclick = () => {
+            recentPointsCurrentPage++;
+            loadRecentPoints(10, true); // تحميل 10 نقاط إضافية
+        };
+        container.appendChild(btn);
+    } else {
+        container.innerHTML = '<p class="no-more-points">جميع النقاط مُحمّلة.</p>';
+    }
 }
 
 function formatDate(dateString) {
@@ -614,7 +700,7 @@ async function handleAddPoint(e) {
         if (response.ok) {
             e.target.reset();
             updatePointCategories();
-            loadRecentPoints();
+            loadRecentPoints(10, false);
             showNotification('تم إضافة النقطة بنجاح', 'success');
         } else {
             const errorData = await response.json();
@@ -637,7 +723,7 @@ async function deletePoint(pointId) {
     try {
         const response = await fetch(`/api/points/${pointId}`, fetchOptions({ method: 'DELETE' }));
         if (response.ok) {
-            loadRecentPoints();
+            loadRecentPoints(10, false);
             if(document.querySelector('.tab-btn[data-tab="members"]').classList.contains('active')) {
                 loadMembers();
             }
