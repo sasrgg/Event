@@ -1388,3 +1388,19 @@ body {
     }
 }
 
+.show-more-container {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.show-more-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.no-more-points {
+    font-size: 13px;
+    color: #666;
+    margin: 10px 0;
+    font-style: italic;
+}
