@@ -8,6 +8,7 @@ POSITIVE_CATEGORIES = {
     'EVENT_DESIGN': 'تصميم فعالية',
     'EVENT_IDEA': 'فكرة فعالية',
     'Daily_top': 'توب يومي',
+    'Host_game': 'إستضافة لعبة',
     'OTHER': 'أخرى'
 }
 
