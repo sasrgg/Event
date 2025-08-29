@@ -39,7 +39,7 @@ app.register_blueprint(points_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api')
 
 # استخدام PostgreSQL على Neon.tech
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_x59nacpoKeyA@ep-frosty-king-a28esjvt-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres.iycscmqemurdmdkusrau:Sasrggs1smb1@aws-1-eu-central-1.pooler.supabase.com:6543/postgres')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
