@@ -21,7 +21,7 @@
     }
   ],
   "env": {
-    "DATABASE_URL": "postgresql://neondb_owner:npg_x59nacpoKeyA@ep-frosty-king-a28esjvt-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require",
+    "DATABASE_URL": "postgresql://postgres.iycscmqemurdmdkusrau:Sasrggs1smb1@aws-1-eu-central-1.pooler.supabase.com:6543/postgres",
     "VERCEL": "1"
   }
 }
